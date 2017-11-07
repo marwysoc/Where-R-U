@@ -2,6 +2,7 @@ package com.example.android.whereru;
 
 import android.Manifest;
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.LoaderManager;
 import android.content.AsyncTaskLoader;
 import android.content.Context;
@@ -57,7 +58,7 @@ import static android.view.View.GONE;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
-        LoaderManager.LoaderCallbacks<List<SinglePlace>>{
+        LoaderManager.LoaderCallbacks<List<SinglePlace>> {
 
     /** Tag for the log messages */
     private final String TAG = getClass().getSimpleName();
@@ -68,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int PLACE_PICKER_REQUEST = 1;
     private static final int PLACE_AUTOCOMPLETE_REQUEST_CODE = 1;
     private static final int MY_PERMISSION_FINE_LOCATION = 1;
+    private static final int ASK_MULTIPLE_PERMISSION_REQUEST_CODE = 1;
 
     /** The minimum distance to change Updates in meter */
     private static final long MIN_UPDATE_DISTANCE = 10;
@@ -85,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private EditText searchPlace;
 
     private GoogleMap mMap;
-    private LocationManager mLocationManager;
+    LocationManager mLocationManager;
 
     /** Location variables. */
     private double latitude;
@@ -117,16 +119,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         searchPlace = (EditText) findViewById(R.id.place_search);
         searchPlace.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 // Restart Loader to refresh searching places.
-                 getLoaderManager().restartLoader(PLACE_LOADER_ID, null, MainActivity.this).forceLoad();
+                getLoaderManager().restartLoader(PLACE_LOADER_ID, null, MainActivity.this).forceLoad();
             }
 
             @Override
-            public void afterTextChanged(Editable s) {}
+            public void afterTextChanged(Editable s) {
+            }
         });
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -145,7 +149,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Get a reference to the ConnectivityManager to check state of network connectivity
         ConnectivityManager cm =
-                (ConnectivityManager)this.getSystemService(Context.CONNECTIVITY_SERVICE);
+                (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
 
         // Get details on the currently active default data network
         NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
@@ -163,59 +167,66 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         checkPermission();
         mLocationManager.requestLocationUpdates(locationProvider,
                 MIN_UPDATE_TIME, MIN_UPDATE_DISTANCE, new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-                // Check if there is some provider enabled
-                // and get location from.
-                if (mLocationManager != null) {
-                    checkPermission();
-                    // Get the last known location.
-                    location = mLocationManager
-                            .getLastKnownLocation(locationProvider);
-                    // Get the latitude and the longitude.
-                    if (location != null) {
-                        latitude = location.getLatitude();
-                        longitude = location.getLongitude();
+                    @Override
+                    public void onLocationChanged(Location location) {
+                        // Check if there is some provider enabled
+                        // and get location from.
+                        if (mLocationManager != null) {
+                            // Get the last known location.
+                            checkPermission();
+                            location = mLocationManager
+                                    .getLastKnownLocation(locationProvider);
+                            // Get the latitude and the longitude.
+                            if (location != null) {
+                                latitude = location.getLatitude();
+                                longitude = location.getLongitude();
+                            }
+                        }
+
+                        LatLng latLng = new LatLng(latitude, longitude);
+                        Geocoder geocoder = new Geocoder(getApplicationContext());
+                        try {
+                            List<android.location.Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
+                            // Make string containing location description (City, Country).
+                            String here = addressList.get(0).getLocality() + ", ";
+                            here += addressList.get(0).getCountryName();
+
+                            // Add marker to the map - users location.
+                            mMap.addMarker(new MarkerOptions()
+                                    .position(latLng)
+                                    .title(here)
+                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10));
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
-                }
 
-                LatLng latLng = new LatLng(latitude, longitude);
-                Geocoder geocoder = new Geocoder(getApplicationContext());
-                try {
-                    List<android.location.Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
-                    // Make string containing location description (City, Country).
-                    String here = addressList.get(0).getLocality() + ", ";
-                    here += addressList.get(0).getCountryName();
+                    @Override
+                    public void onStatusChanged(String provider, int status, Bundle extras) {
+                    }
 
-                    // Add marker to the map - users location.
-                    mMap.addMarker(new MarkerOptions()
-                            .position(latLng)
-                            .title(here)
-                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {}
-            @Override
-            public void onProviderEnabled(String provider) {}
-            @Override
-            public void onProviderDisabled(String provider) {}
-        });
+                    @Override
+                    public void onProviderEnabled(String provider) {
+                    }
+
+                    @Override
+                    public void onProviderDisabled(String provider) {
+                    }
+                });
     }
 
     // Request permissions for Android Marshmallow.
     @TargetApi(M)
     private void checkPermission(){
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                && ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
             if (Build.VERSION.SDK_INT >= M) {
-                requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
-                        MY_PERMISSION_FINE_LOCATION);
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION},
+                        ASK_MULTIPLE_PERMISSION_REQUEST_CODE);
             }
             return;
         }
@@ -226,8 +237,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         switch (requestCode) {
-            case MY_PERMISSION_FINE_LOCATION:
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+            case ASK_MULTIPLE_PERMISSION_REQUEST_CODE:
+                if (grantResults.length > 0
+                        && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(getApplicationContext(), "This app requires location permissions to be granted",
                             Toast.LENGTH_SHORT).show();
                     finish();
