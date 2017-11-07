@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#b9d3c2</color>
+    <color name="colorPrimaryDark">#00183b</color>
+    <color name="colorAccent">#a5b076</color>
+
+    <!-- Text color for place name in the list item -->
+    <color name="textColorPlaceName">#000000</color>
+
+    <!-- Text color for the place location in the list item -->
+    <color name="textColorPlaceLocation">#424242</color>
+
+    <!-- Background color for list item -->
+    <color name="background_list">#efe9d7</color>
+
+    <!-- Background color for main activity -->
+    <color name="background_main">#faf7f2</color>
+
+    <!-- Color for users location pin -->
+    <color name="user_location">#007FFF</color>
+
+    <color name="white">#ffffff</color>
+</resources>
